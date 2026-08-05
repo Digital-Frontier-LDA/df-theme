@@ -86,14 +86,54 @@ function main(argv) {
     // Check the import on the STRIPPED body: a commented-out example (this
     // package's own header contains one) must not count as importing.
     if (/@import\s+["'][^"']*@digitalfrontier\/theme/.test(body)) importing++;
-    const lines = body.split("\n");
-    lines.forEach((line, i) => {
-      const m = line.match(/^\s*--([a-z0-9-]+)\s*:/i);
-      if (!m) return;
-      const name = m[1].toLowerCase();
-      if (!owned.has(name)) return;
-      problems.push({ file: f, line: i + 1, token: name, text: line.trim() });
-    });
+    // Character scanner rather than a per-line pass. A line-based check has to
+    // decide the enclosing selector BEFORE it has seen the `{` on that same
+    // line, so `:root { --primary: red; }` written on one line slips through —
+    // which is exactly the shape someone adds when re-introducing an override.
+    //
+    // Only a :root declaration overrides the package globally. A SCOPED
+    // re-definition is a different surface, not a palette override: tron
+    // legitimately does `.report-page { --background: #ffffff; }` for print,
+    // and flagging that would make the check unusable for any app with a light
+    // print or embed surface.
+    const stack = [];
+    let buf = "";
+    let line = 1;
+    const isRootSel = (sel) =>
+      /(^|,)\s*:root\b/.test(sel || "") &&
+      !stack.slice(0, -1).some((s) => s.trim().startsWith("@media"));
+
+    for (const ch of body) {
+      if (ch === "\n") {
+        line++;
+        buf += " ";
+        continue;
+      }
+      if (ch === "{") {
+        stack.push(buf.trim());
+        buf = "";
+      } else if (ch === "}") {
+        stack.pop();
+        buf = "";
+      } else if (ch === ";") {
+        const decl = buf.match(/(?:^|\s)--([a-z0-9-]+)\s*:/i);
+        if (decl) {
+          const name = decl[1].toLowerCase();
+          if (owned.has(name) && isRootSel(stack[stack.length - 1])) {
+            problems.push({
+              file: f,
+              line,
+              token: name,
+              text: buf.trim().slice(0, 100),
+              sel: stack[stack.length - 1],
+            });
+          }
+        }
+        buf = "";
+      } else {
+        buf += ch;
+      }
+    }
   }
 
   console.log(
