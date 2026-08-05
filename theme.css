@@ -85,6 +85,13 @@
   /* Geometry */
   --radius: 0.5rem;
 
+  /* Declared at :root, not only under `.dark`, because this theme IS dark —
+     there is no light variant to switch to. Without it the browser renders
+     native UI (scrollbars, form controls, date pickers) in light mode against
+     our dark surfaces. Apps that gate on a `.dark` class got this already; apps
+     that are simply dark-only did not, which is the inconsistency this fixes. */
+  color-scheme: dark;
+
   /* ── 2. ALIASES ─────────────────────────────────────────────────────────
      Names shadcn/ui and cva components already reference. Every one is a
      var() onto a primitive — no literal colours below this line. */
@@ -144,9 +151,11 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Dark-only theme: `.dark` exists so components that gate on it still work,
-   but it inherits — there is no light variant to switch to. Apps should not
-   add one without changing this file, or the two will disagree. */
+/* `.dark` is kept so components that gate on the class still match, and for apps
+   that already set `<html class="dark">`. It is now redundant with the :root
+   declaration above rather than the only place color-scheme is set — which was
+   the bug: an app that was simply dark-only, without a `.dark` class, never got
+   it. There is no light variant to switch to. */
 .dark {
   color-scheme: dark;
 }
