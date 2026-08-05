@@ -1,0 +1,207 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Digital Frontier — canonical app theme
+
+   Dark-only monochrome: warm near-black surfaces, cream/beige as the single
+   accent. Derived from the tron (akash-accounting/frontend) and Sentinel
+   (guardian-cli-claude-code/web) apps, which were already deliberately aligned
+   — tron's own comments describe its sidebar as "at parity with Sentinel".
+   Those two are the reference; this file is now the single source.
+
+   WHY THIS EXISTS. Four apps each carried their own :root block and drifted
+   into two palettes that differed on background, card, text, accent and radius
+   — the same colour expressed four ways, in two colour spaces. Applying "the
+   theme" by hand meant re-deriving it each time, so each application picked
+   slightly different values. Import this instead.
+
+   ── HOW TO USE ─────────────────────────────────────────────────────────────
+
+     /* app/globals.css *​/
+     @import "tailwindcss";
+     @import "@digitalfrontier/theme";      <- after tailwind, before your CSS
+
+   Then DELETE the app's own :root colour block. If a token is defined in both
+   places the app's wins, which is precisely how drift returns.
+
+   ── LAYERS ─────────────────────────────────────────────────────────────────
+
+   1. PRIMITIVES (--df-*)   the actual colours. Defined once, here.
+   2. ALIASES               --background/--foreground/... expressed as
+                            var(--df-*). shadcn/ui and cva components already
+                            expect these names, so existing components keep
+                            working untouched.
+   3. @theme                maps aliases to Tailwind v4 utilities.
+
+   To reskin, override a PRIMITIVE — every alias follows. Overriding an alias
+   directly breaks that chain and is how you end up with a fifth palette.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── 1. PRIMITIVES ──────────────────────────────────────────────────────
+     oklch throughout, deliberately. It is perceptually uniform, so the
+     luminance ramp below is even to the eye rather than even in numbers, and
+     alpha variants of the accent stay on-hue. Mixing hex and oklch across
+     apps is what made two identical palettes look like different ones. */
+
+  /* Surfaces — warm near-black, lightest-last */
+  --df-bg: oklch(0.159 0 0);            /* page                     #0d0d0d */
+  --df-surface: oklch(0.226 0 0);       /* card, popover            #1c1c1c */
+  --df-surface-2: oklch(0.257 0.002 68); /* secondary, muted, accent fills */
+  --df-rail: oklch(0.217 0.002 107);    /* sidebar — LIGHTER than --df-bg,
+                                           not darker: the rail reads as a
+                                           surface above the page, not a well */
+
+  /* Ink */
+  --df-text: oklch(0.959 0.007 81);     /* primary text             #f4f1ec */
+  --df-muted: oklch(0.673 0.018 79);    /* secondary text           #9c958a */
+  --df-rail-text: oklch(0.766 0.019 81); /* inactive sidebar rows — dimmed so
+                                            selection reads by CONTRAST, not
+                                            by the fill alone */
+
+  /* Accent — the only chromatic family in the theme */
+  --df-beige: oklch(0.918 0.019 83);        /* primary, active      #eae3d6 */
+  --df-beige-muted: oklch(0.787 0.031 81);  /* ring, secondary accent       */
+  --df-on-beige: oklch(0.196 0 0);          /* text ON beige fills          */
+
+  /* Lines. Translucent accent, never an opaque grey — it picks up the brand
+     hue and lets the surface show through, so borders recede instead of
+     boxing every element. */
+  --df-hairline: oklch(0.918 0.019 83 / 0.1);
+  --df-line-strong: oklch(0.918 0.019 83 / 0.14);
+
+  /* Status. Flynn invented its own --good/--bad/--warn locally; standardised
+     here so the next app does not invent a third set. */
+  --df-good: oklch(0.72 0.16 150);
+  --df-bad: oklch(0.577 0.215 27);
+  --df-warn: oklch(0.8 0.14 85);
+
+  /* Chart ramp — monochrome luminance steps, lightest first, built for a dark
+     background. Categorical hues would fight the single-accent identity. */
+  --df-chart-1: oklch(0.918 0.019 83);
+  --df-chart-2: oklch(0.787 0.031 81);
+  --df-chart-3: oklch(0.553 0.073 78);
+  --df-chart-4: oklch(0.673 0.018 79);
+  --df-chart-5: oklch(0.509 0.017 81);
+
+  /* Geometry */
+  --radius: 0.5rem;
+
+  /* ── 2. ALIASES ─────────────────────────────────────────────────────────
+     Names shadcn/ui and cva components already reference. Every one is a
+     var() onto a primitive — no literal colours below this line. */
+
+  --background: var(--df-bg);
+  --foreground: var(--df-text);
+
+  --card: var(--df-surface);
+  --card-foreground: var(--df-text);
+  --popover: var(--df-surface);
+  --popover-foreground: var(--df-text);
+
+  --primary: var(--df-beige);
+  --primary-foreground: var(--df-on-beige);
+
+  --secondary: var(--df-surface-2);
+  --secondary-foreground: var(--df-text);
+  --muted: var(--df-surface-2);
+  --muted-foreground: var(--df-muted);
+  --accent: var(--df-surface-2);
+  --accent-foreground: var(--df-text);
+
+  --destructive: var(--df-bad);
+  --destructive-foreground: var(--df-text);
+
+  --border: var(--df-hairline);
+  --input: var(--df-line-strong);
+  --ring: var(--df-beige-muted);
+  --hairline: var(--df-hairline);
+
+  --surface: var(--df-surface);
+  --surface-2: var(--df-surface-2);
+  --beige: var(--df-beige);
+  --beige-muted: var(--df-beige-muted);
+
+  --chart-1: var(--df-chart-1);
+  --chart-2: var(--df-chart-2);
+  --chart-3: var(--df-chart-3);
+  --chart-4: var(--df-chart-4);
+  --chart-5: var(--df-chart-5);
+
+  --sidebar: var(--df-rail);
+  --sidebar-foreground: var(--df-rail-text);
+  --sidebar-primary: var(--df-beige);
+  --sidebar-primary-foreground: var(--df-on-beige);
+  --sidebar-accent: var(--df-hairline);          /* translucent tint, not a chip */
+  --sidebar-accent-foreground: var(--df-beige);
+  --sidebar-border: var(--df-hairline);
+  --sidebar-ring: var(--df-beige-muted);
+
+  /* Radius scale — ADDITIVE, matching the shadcn convention that its
+     components assume. tron used a multiplicative scale (radius * 0.6/0.8/1.4)
+     which drifts from what shadcn primitives expect at non-default radii. */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Dark-only theme: `.dark` exists so components that gate on it still work,
+   but it inherits — there is no light variant to switch to. Apps should not
+   add one without changing this file, or the two will disagree. */
+.dark {
+  color-scheme: dark;
+}
+
+/* ── 3. TAILWIND v4 MAPPING ──────────────────────────────────────────────
+   `@theme inline` so utilities resolve to the var() chain rather than
+   snapshotting a value — overriding a primitive at runtime still works. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-beige: var(--beige);
+  --color-beige-muted: var(--beige-muted);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-hairline: var(--hairline);
+
+  --color-good: var(--df-good);
+  --color-bad: var(--df-bad);
+  --color-warn: var(--df-warn);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+}
