@@ -1,0 +1,52 @@
+# CI for the package that gates four apps' palettes.
+#
+# It had none until now, which was the wrong way round: df-theme-check is what
+# stops a local :root block creeping back into tron/sentinel/Flynn, and the
+# checker itself had shipped four separate bugs (a false positive on tron's print
+# scope, a `pending` reset bug, a missed single-line block, and an @media bypass).
+# Every one was invisible from reading the code and only appeared when a real file
+# was run through it — which is exactly what test/check.test.mjs now does.
+#
+# Actions are pinned to full commit SHAs; the trailing version comment is what
+# Dependabot reads to keep them current.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Checker tests + theme invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "24"
+
+      - name: Run tests
+        run: node --test test/check.test.mjs
+
+      # The checker must reject a real violation, not merely run. A guard that
+      # only ever passes is indistinguishable from no guard, so assert the
+      # failing direction explicitly rather than trusting the suite alone.
+      - name: Assert the checker actually fails on a violation
+        run: |
+          set -uo pipefail
+          tmp=$(mktemp -d)
+          printf '@import "@digitalfrontier/theme";\n:root { --primary: red; }\n' > "$tmp/globals.css"
+          if node bin/df-theme-check.mjs "$tmp/globals.css" >/dev/null 2>&1; then
+            echo "::error::df-theme-check exited 0 on a known violation — the guard is dead"
+            exit 1
+          fi
+          echo "checker correctly rejects a :root override"

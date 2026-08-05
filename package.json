@@ -20,7 +20,12 @@
     "bin/df-theme-check.mjs",
     "README.md"
   ],
-  "keywords": ["digital-frontier", "theme", "design-tokens", "tailwind"],
+  "keywords": [
+    "digital-frontier",
+    "theme",
+    "design-tokens",
+    "tailwind"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Digital-Frontier-LDA/df-theme.git"
@@ -29,6 +34,11 @@
     "tailwindcss": "^4"
   },
   "peerDependenciesMeta": {
-    "tailwindcss": { "optional": true }
+    "tailwindcss": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "test": "node --test test/check.test.mjs"
   }
 }
