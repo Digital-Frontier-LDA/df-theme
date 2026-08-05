@@ -61,8 +61,14 @@ function main(argv) {
 
   const files = argv.length
     ? argv
-    : ["src", "app", "styles", "web/src", "frontend/app", "dashboard/src"]
-        .flatMap((d) => cssFilesUnder(d));
+    : [
+        "src",
+        "app",
+        "styles",
+        "web/src",
+        "frontend/app",
+        "dashboard/src",
+      ].flatMap((d) => cssFilesUnder(d));
 
   if (files.length === 0) {
     // Fail closed: scanning nothing and reporting success is indistinguishable
@@ -99,9 +105,17 @@ function main(argv) {
     const stack = [];
     let buf = "";
     let line = 1;
+    // A :root nested in @media still overrides the package globally whenever that
+    // condition matches, so it is NOT exempt — `@media (min-width:1px){:root{...}}`
+    // is a one-line bypass of the whole check. The single exception is print,
+    // which is a genuinely different surface, for the same reason tron's
+    // `.report-page` scope is allowed.
+    const inPrintScope = () =>
+      stack
+        .slice(0, -1)
+        .some((s) => /^@media\b/.test(s.trim()) && /\bprint\b/.test(s));
     const isRootSel = (sel) =>
-      /(^|,)\s*:root\b/.test(sel || "") &&
-      !stack.slice(0, -1).some((s) => s.trim().startsWith("@media"));
+      /(^|,)\s*:root\b/.test(sel || "") && !inPrintScope();
 
     for (const ch of body) {
       if (ch === "\n") {
@@ -137,7 +151,7 @@ function main(argv) {
   }
 
   console.log(
-    `df-theme-check: ${files.length} file(s), ${owned.size} owned token(s), ${importing} importing the package`
+    `df-theme-check: ${files.length} file(s), ${owned.size} owned token(s), ${importing} importing the package`,
   );
 
   if (problems.length) {
@@ -150,13 +164,13 @@ function main(argv) {
       console.error(`  … and ${problems.length - 40} more`);
     }
     console.error(
-      "\nCSS custom properties are last-declaration-wins, so these OVERRIDE the"
+      "\nCSS custom properties are last-declaration-wins, so these OVERRIDE the",
     );
     console.error(
-      "package and the app will look 'themed' while being off-palette. Delete"
+      "package and the app will look 'themed' while being off-palette. Delete",
     );
     console.error(
-      "them. To intentionally reskin, override a --df-* PRIMITIVE instead so the"
+      "them. To intentionally reskin, override a --df-* PRIMITIVE instead so the",
     );
     console.error("aliases follow.");
     return 1;
@@ -164,7 +178,7 @@ function main(argv) {
 
   if (importing === 0) {
     console.error(
-      "\nNo file imports @digitalfrontier/theme — the app has no palette at all."
+      "\nNo file imports @digitalfrontier/theme — the app has no palette at all.",
     );
     return 1;
   }
