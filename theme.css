@@ -73,6 +73,11 @@
   --df-good: oklch(0.72 0.16 150);
   --df-bad: oklch(0.577 0.215 27);
   --df-warn: oklch(0.8 0.14 85);
+  /* Informational, not brand. The theme is monochrome, but "in progress" needs to
+     read as neither success nor warning, and every app that lacked this token
+     invented a raw hex blue for it — the console shipped `#3b82f6`. Same argument
+     that put good/bad/warn here. */
+  --df-info: oklch(0.62 0.19 258);
 
   /* Chart ramp — monochrome luminance steps, lightest first, built for a dark
      background. Categorical hues would fight the single-accent identity. */
@@ -116,6 +121,15 @@
 
   --destructive: var(--df-bad);
   --destructive-foreground: var(--df-text);
+
+  /* Status aliases. good/bad/warn already existed as PRIMITIVES, but only under
+     `--df-*` names, so an app wanting a status colour found nothing called
+     `--success` and declared its own — which is exactly what the README says
+     these were standardised to prevent. The primitives were right; the names
+     apps look for were missing. */
+  --success: var(--df-good);
+  --warning: var(--df-warn);
+  --info: var(--df-info);
 
   --border: var(--df-hairline);
   --input: var(--df-line-strong);
@@ -193,6 +207,11 @@
   --color-good: var(--df-good);
   --color-bad: var(--df-bad);
   --color-warn: var(--df-warn);
+
+  /* `text-success` / `bg-warning` / `text-info` — the utility names apps use. */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);

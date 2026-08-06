@@ -152,3 +152,48 @@ test("every @theme mapping points at a token that exists", () => {
   }
   assert.deepEqual(dangling, [], "@theme references an undefined token");
 });
+
+/* ── Status aliases ──────────────────────────────────────────────────────────
+   good/bad/warn existed as PRIMITIVES (`--df-*`) but under no name an app would
+   reach for, so apps declared their own `--success` and shipped a raw hex. The
+   README says these were standardised "so the next app doesn't invent a third
+   set"; the primitives were right and the alias names were missing. These tests
+   pin the names, not the values. */
+
+test("the semantic status aliases exist", () => {
+  const css = readFileSync(THEME, "utf8");
+  for (const name of ["--success", "--warning", "--info"]) {
+    assert.match(
+      css,
+      new RegExp(`^\\s*${name}\\s*:`, "m"),
+      `${name} is missing — an app that wants a status colour will declare its own`,
+    );
+  }
+});
+
+test("status aliases resolve to primitives, never to literal colours", () => {
+  // Same invariant as every other alias: an app reskinning by overriding a
+  // primitive must see the status colours follow. A literal here silently opts
+  // status out of the theme.
+  const css = readFileSync(THEME, "utf8");
+  for (const name of ["--success", "--warning", "--info"]) {
+    const m = css.match(new RegExp(`^\\s*${name}\\s*:\\s*([^;]+);`, "m"));
+    assert.ok(m, `${name} not found`);
+    assert.match(
+      m[1].trim(),
+      /^var\(--df-[a-z0-9-]+\)$/,
+      `${name} must be var() onto a primitive, got: ${m[1].trim()}`,
+    );
+  }
+});
+
+test("a status alias is refused when an app redeclares it", () => {
+  // The whole point: once the package owns --success, an app declaring its own
+  // is drift and the checker must say so.
+  fails(`${IMPORT}\n:root { --success: #22c55e; }`);
+});
+
+test("--df-info exists, because --info cannot alias a primitive that is absent", () => {
+  const css = readFileSync(THEME, "utf8");
+  assert.match(css, /^\s*--df-info\s*:/m, "--df-info primitive is missing");
+});
