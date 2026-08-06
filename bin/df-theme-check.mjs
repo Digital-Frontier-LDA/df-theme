@@ -31,7 +31,19 @@ function ownedTokens() {
   // Only :root declarations — @theme entries are Tailwind plumbing, and an app
   // legitimately adding its own --color-* utility is not a palette override.
   const root = css.slice(css.indexOf(":root {"), css.indexOf("\n}"));
-  for (const m of root.matchAll(/^\s*--([a-z0-9-]+)\s*:/gim)) owned.add(m[1]);
+  for (const m of root.matchAll(/^\s*--([a-z0-9-]+)\s*:/gim)) {
+    // `--df-*` PRIMITIVES are the sanctioned reskin point, not drift. The README
+    // says "Override a primitive, never an alias", and this checker's own failure
+    // message says "To intentionally reskin, override a --df-* PRIMITIVE instead
+    // so the aliases follow" — yet every primitive was in the owned set, so the
+    // tool rejected the exact remedy it recommended. An app that followed the
+    // documentation could not pass its own CI.
+    //
+    // Aliases stay owned: redefining `--background` detaches it from the
+    // primitive and starts a new palette, which IS the drift this exists to stop.
+    if (m[1].startsWith("df-")) continue;
+    owned.add(m[1]);
+  }
   return owned;
 }
 

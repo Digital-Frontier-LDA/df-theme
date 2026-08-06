@@ -197,3 +197,28 @@ test("--df-info exists, because --info cannot alias a primitive that is absent",
   const css = readFileSync(THEME, "utf8");
   assert.match(css, /^\s*--df-info\s*:/m, "--df-info primitive is missing");
 });
+
+/* ── The documented reskin path must actually pass ───────────────────────────
+   `ownedTokens()` parsed every `--x:` in `:root`, primitives included — so an
+   app overriding a `--df-*` primitive was flagged as drift. Both the README
+   ("Override a primitive, never an alias") and this checker's own failure
+   message ("To intentionally reskin, override a --df-* PRIMITIVE instead so the
+   aliases follow") recommend exactly that. The tool rejected its own remedy: an
+   app that followed the documentation could not pass its own CI. */
+
+test("overriding a --df-* PRIMITIVE is allowed — it is the documented reskin", () => {
+  passes(`${IMPORT}\n:root { --df-rail: var(--df-bg); }`);
+});
+
+test("overriding an ALIAS is still refused — that is the real drift", () => {
+  // The distinction the fix rests on: a primitive override reskins and the
+  // aliases follow; an alias override DETACHES from the primitive and starts a
+  // new palette. If this ever passes, the checker has stopped doing its job.
+  fails(`${IMPORT}\n:root { --sidebar: oklch(0.13 0 0); }`);
+});
+
+test("a primitive reskin alongside an app-only token is clean", () => {
+  // The shape a real adopting app has: keep one design-justified primitive
+  // override, add tokens the package does not own, change no alias.
+  passes(`${IMPORT}\n:root {\n  --df-rail: var(--df-bg);\n  --sidebar-muted: var(--df-muted);\n}`);
+});
