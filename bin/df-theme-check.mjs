@@ -126,8 +126,39 @@ function main(argv) {
       stack
         .slice(0, -1)
         .some((s) => /^@media\b/.test(s.trim()) && /\bprint\b/.test(s));
-    const isRootSel = (sel) =>
-      /(^|,)\s*:root\b/.test(sel || "") && !inPrintScope();
+    // A declaration overrides the package GLOBALLY from `:root` — and also from
+    // `.dark`, which this check used to miss entirely.
+    //
+    // `.dark` is not a scope in a dark-only theme, it is the theme. An app that
+    // renders `<html class="dark">` — which is the shape this package is built
+    // for, and what its own `.dark { color-scheme: dark }` block exists to serve
+    // — gives `.dark` HIGHER specificity than `:root` (0,1,0 vs 0,1,0 but later
+    // and more specific in practice for descendants). So `.dark { --primary: … }`
+    // beats the package at runtime while passing a `:root`-only check clean.
+    // That is precisely the drift this tool exists to catch, and it was the one
+    // shape it could not see.
+    //
+    // Whole-selector match only: `.dark .badge { --primary: … }` is a genuinely
+    // SCOPED override, the same category as tron's `.report-page`, and flagging
+    // it would make the check unusable for any app that varies a token inside a
+    // subtree.
+    // Case handling is deliberately asymmetric, because CSS is:
+    //   - type selectors and pseudo-classes are ASCII case-INSENSITIVE in HTML,
+    //     so `HTML.dark` and `:ROOT` both match what `html.dark` / `:root` do;
+    //   - CLASS selectors are case-SENSITIVE, so `.Dark` is a different class
+    //     and must NOT be treated as the theme selector.
+    // A blanket /i would get the second one wrong and start flagging unrelated
+    // classes, so the insensitivity is applied only where CSS actually has it.
+    const isRootSel = (sel) => {
+      if (inPrintScope()) return false;
+      return (sel || "")
+        .split(",")
+        .map((s) => s.trim())
+        .some(
+          (s) =>
+            /^:root\b/i.test(s) || /^(?:[Hh][Tt][Mm][Ll])?\.dark$/.test(s),
+        );
+    };
 
     for (const ch of body) {
       if (ch === "\n") {
