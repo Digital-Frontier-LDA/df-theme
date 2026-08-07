@@ -126,8 +126,29 @@ function main(argv) {
       stack
         .slice(0, -1)
         .some((s) => /^@media\b/.test(s.trim()) && /\bprint\b/.test(s));
-    const isRootSel = (sel) =>
-      /(^|,)\s*:root\b/.test(sel || "") && !inPrintScope();
+    // A declaration overrides the package GLOBALLY from `:root` — and also from
+    // `.dark`, which this check used to miss entirely.
+    //
+    // `.dark` is not a scope in a dark-only theme, it is the theme. An app that
+    // renders `<html class="dark">` — which is the shape this package is built
+    // for, and what its own `.dark { color-scheme: dark }` block exists to serve
+    // — gives `.dark` HIGHER specificity than `:root` (0,1,0 vs 0,1,0 but later
+    // and more specific in practice for descendants). So `.dark { --primary: … }`
+    // beats the package at runtime while passing a `:root`-only check clean.
+    // That is precisely the drift this tool exists to catch, and it was the one
+    // shape it could not see.
+    //
+    // Whole-selector match only: `.dark .badge { --primary: … }` is a genuinely
+    // SCOPED override, the same category as tron's `.report-page`, and flagging
+    // it would make the check unusable for any app that varies a token inside a
+    // subtree.
+    const isRootSel = (sel) => {
+      if (inPrintScope()) return false;
+      return (sel || "")
+        .split(",")
+        .map((s) => s.trim())
+        .some((s) => /^:root\b/.test(s) || /^(html)?\.dark$/.test(s));
+    };
 
     for (const ch of body) {
       if (ch === "\n") {

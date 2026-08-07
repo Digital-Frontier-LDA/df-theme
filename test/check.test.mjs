@@ -244,3 +244,37 @@ test("--destructive-foreground aliases --df-on-bad, not --df-text", () => {
 test("--df-on-bad exists as a primitive", () => {
   assert.match(readFileSync(THEME, "utf8"), /^\s*--df-on-bad\s*:/m);
 });
+
+/* ── `.dark` overrides ───────────────────────────────────────────────────────
+   The check only looked at `:root`, so a `.dark` block redefining a
+   package-owned token passed clean while WINNING at runtime. In a dark-only
+   theme `.dark` is not a scope, it is the theme — an app rendering
+   `<html class="dark">` (the shape this package targets, and what its own
+   `.dark { color-scheme: dark }` block serves) has that block beat `:root`.
+   Found in a real adopting app that carried a full `.dark` palette alongside
+   the import and reported clean. */
+
+test("a .dark block redefining an owned token FAILS", () => {
+  fails(`${IMPORT}\n.dark { --primary: oklch(0.5 0.2 250); }`);
+});
+
+test("html.dark is caught the same way", () => {
+  fails(`${IMPORT}\nhtml.dark { --background: #000; }`);
+});
+
+test(":root and .dark in one selector list is caught", () => {
+  fails(`${IMPORT}\n:root, .dark { --card: #111; }`);
+});
+
+test("a SCOPED .dark descendant override stays legal", () => {
+  // Same category as tron's `.report-page`: varying a token inside a subtree is
+  // a different surface, not a palette override. Flagging it would make the
+  // check unusable for any app with a themed subtree.
+  passes(`${IMPORT}\n.dark .badge { --primary: oklch(0.5 0.2 250); }`);
+});
+
+test("the package's own .dark block does not trip the check", () => {
+  // theme.css declares `.dark { color-scheme: dark }` — no custom properties,
+  // so it must stay clean under the widened rule.
+  assert.match(readFileSync(THEME, "utf8"), /\.dark\s*\{\s*color-scheme:\s*dark;\s*\}/);
+});
