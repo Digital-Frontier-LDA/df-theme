@@ -61,6 +61,12 @@
   --df-beige: oklch(0.918 0.019 83);        /* primary, active      #eae3d6 */
   --df-beige-muted: oklch(0.787 0.031 81);  /* ring, secondary accent       */
   --df-on-beige: oklch(0.196 0 0);          /* text ON beige fills          */
+  /* Text ON a solid --df-bad fill. NOT --df-text: that measures 4.29:1 on
+     --df-bad, which is AA-large only, so a destructive button with a label
+     large enough to read is still below AA for body text. This is lifted just
+     far enough to clear 4.5:1 (measures 4.56:1) while staying on-hue — the
+     alternative apps reach for is pure white, which breaks the monochrome. */
+  --df-on-bad: oklch(0.98 0.007 81);
 
   /* Lines. Translucent accent, never an opaque grey — it picks up the brand
      hue and lets the surface show through, so borders recede instead of
@@ -120,7 +126,7 @@
   --accent-foreground: var(--df-text);
 
   --destructive: var(--df-bad);
-  --destructive-foreground: var(--df-text);
+  --destructive-foreground: var(--df-on-bad);
 
   /* Status aliases. good/bad/warn already existed as PRIMITIVES, but only under
      `--df-*` names, so an app wanting a status colour found nothing called

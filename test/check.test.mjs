@@ -222,3 +222,25 @@ test("a primitive reskin alongside an app-only token is clean", () => {
   // override, add tokens the package does not own, change no alias.
   passes(`${IMPORT}\n:root {\n  --df-rail: var(--df-bg);\n  --sidebar-muted: var(--df-muted);\n}`);
 });
+
+/* ── Destructive foreground contrast ─────────────────────────────────────────
+   `--destructive-foreground` aliased `--df-text`, which measures 4.29:1 on
+   `--df-bad` — AA-large, not AA. Apps hit this and hardcoded `text-white`,
+   which passes but leaves the monochrome palette and decouples foreground from
+   background, so a reskin moves one and not the other. `--df-on-bad` exists so
+   the SEMANTIC token is also the accessible one. */
+
+test("--destructive-foreground aliases --df-on-bad, not --df-text", () => {
+  const css = readFileSync(THEME, "utf8");
+  const m = css.match(/^\s*--destructive-foreground\s*:\s*([^;]+);/m);
+  assert.ok(m, "--destructive-foreground not found");
+  assert.equal(
+    m[1].trim(),
+    "var(--df-on-bad)",
+    "destructive-foreground must use the on-bad primitive; --df-text is only 4.29:1 on --df-bad",
+  );
+});
+
+test("--df-on-bad exists as a primitive", () => {
+  assert.match(readFileSync(THEME, "utf8"), /^\s*--df-on-bad\s*:/m);
+});
