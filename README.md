@@ -93,7 +93,7 @@ primitive, and you've started a fifth palette.
 |---|---|
 | surfaces | `--df-bg` `--df-surface` `--df-surface-2` `--df-rail` |
 | ink | `--df-text` `--df-muted` `--df-rail-text` |
-| accent | `--df-beige` `--df-beige-muted` `--df-on-beige` |
+| accent | `--df-beige` `--df-beige-muted` `--df-on-beige` `--df-on-bad` |
 | lines | `--df-hairline` `--df-line-strong` |
 | status | `--df-good` `--df-bad` `--df-warn` `--df-info` (aliased as `--success` `--warning` `--info`) |
 | charts | `--df-chart-1` … `--df-chart-5` |
