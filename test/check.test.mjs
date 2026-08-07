@@ -262,8 +262,25 @@ test("html.dark is caught the same way", () => {
   fails(`${IMPORT}\nhtml.dark { --background: #000; }`);
 });
 
-test(":root and .dark in one selector list is caught", () => {
-  fails(`${IMPORT}\n:root, .dark { --card: #111; }`);
+test("a selector list containing .dark is caught", () => {
+  // Deliberately NOT `:root, .dark` — that form passes under the old
+  // `:root`-only check too, so it would prove nothing about comma handling.
+  // `.app` is non-global, so `.dark` is the only thing that can trip this.
+  fails(`${IMPORT}\n.app, .dark { --card: #111; }`);
+});
+
+test("HTML.dark is caught — type selectors are case-insensitive in HTML", () => {
+  fails(`${IMPORT}\nHTML.dark { --primary: oklch(0.5 0.2 250); }`);
+});
+
+test(":ROOT is caught for the same reason", () => {
+  fails(`${IMPORT}\n:ROOT { --primary: oklch(0.5 0.2 250); }`);
+});
+
+test(".Dark is NOT caught — class selectors ARE case-sensitive", () => {
+  // A different class entirely. Flagging it would be a false positive, and the
+  // reason a blanket /i on the whole selector would be wrong.
+  passes(`${IMPORT}\n.Dark { --primary: oklch(0.5 0.2 250); }`);
 });
 
 test("a SCOPED .dark descendant override stays legal", () => {

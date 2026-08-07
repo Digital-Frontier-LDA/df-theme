@@ -142,12 +142,22 @@ function main(argv) {
     // SCOPED override, the same category as tron's `.report-page`, and flagging
     // it would make the check unusable for any app that varies a token inside a
     // subtree.
+    // Case handling is deliberately asymmetric, because CSS is:
+    //   - type selectors and pseudo-classes are ASCII case-INSENSITIVE in HTML,
+    //     so `HTML.dark` and `:ROOT` both match what `html.dark` / `:root` do;
+    //   - CLASS selectors are case-SENSITIVE, so `.Dark` is a different class
+    //     and must NOT be treated as the theme selector.
+    // A blanket /i would get the second one wrong and start flagging unrelated
+    // classes, so the insensitivity is applied only where CSS actually has it.
     const isRootSel = (sel) => {
       if (inPrintScope()) return false;
       return (sel || "")
         .split(",")
         .map((s) => s.trim())
-        .some((s) => /^:root\b/.test(s) || /^(html)?\.dark$/.test(s));
+        .some(
+          (s) =>
+            /^:root\b/i.test(s) || /^(?:[Hh][Tt][Mm][Ll])?\.dark$/.test(s),
+        );
     };
 
     for (const ch of body) {
