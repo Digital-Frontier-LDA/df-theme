@@ -295,3 +295,170 @@ test("the package's own .dark block does not trip the check", () => {
   // so it must stay clean under the widened rule.
   assert.match(readFileSync(THEME, "utf8"), /\.dark\s*\{\s*color-scheme:\s*dark;\s*\}/);
 });
+
+/* ── Chart ramp ─────────────────────────────────────────────────────────────
+   A chart ramp whose steps cannot be told apart is not a palette. These tests
+   resolve the full alias chain (--color-chart-N -> --chart-N -> --df-chart-N ->
+   oklch) and compare the resulting COLOURS, because two differently-named
+   tokens routinely resolve to one colour and comparing token strings cannot see
+   that — which is exactly how the ramp shipped two collisions.
+
+   The ramp this replaces measured ΔE_ok 0.0 between its first step and the
+   primary colour, and 0.0 between a later step and the secondary text colour. A
+   chart whose first series wears the accent button's colour reads as a highlight
+   rather than a series; two series sharing a colour are told apart by nothing but
+   a legend. Its closest adjacent pair was 7.1 apart, which is why a six-line chart
+   had to synthesise a second ladder out of color-mix() at the call site.
+
+   ΔE_ok is euclidean distance in OKLab ×100. The floors below are the measured
+   separations of the ramp being shipped, with margin; they are not round numbers
+   chosen for looks. */
+
+const MIN_PAIRWISE = 10;   // any two series, wherever they sit on the ramp
+const MIN_FROM_CARD = 15;  // a 2px line has to survive on a --color-card surface
+const MIN_FROM_UI = 8;     // a series must not read as the colour of its own UI
+
+const RAD = Math.PI / 180;
+const oklab = (c) => [c.L, c.C * Math.cos(c.H * RAD), c.C * Math.sin(c.H * RAD)];
+const deltaEOk = (a, b) => {
+  const [l1, a1, b1] = oklab(a);
+  const [l2, a2, b2] = oklab(b);
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2) * 100;
+};
+
+/** Follow an alias chain to the literal colour it finally lands on. */
+function colourOf(css, name, seen = new Set()) {
+  assert.ok(!seen.has(name), `alias cycle through --${name}`);
+  seen.add(name);
+  const m = css.match(new RegExp(`^\\s*--${name}\\s*:\\s*([^;]+);`, "m"));
+  assert.ok(m, `--${name} is not declared`);
+  const value = m[1].trim();
+  const ref = value.match(/^var\(--([a-z0-9-]+)\)$/i);
+  if (ref) return colourOf(css, ref[1], seen);
+  const c = value.match(/^oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)$/i);
+  assert.ok(c, `--${name} does not resolve to an oklch() colour, got: ${value}`);
+  return { L: +c[1], C: +c[2], H: +c[3] };
+}
+
+/** Every --color-chart-N, in declaration order, as resolved colours. */
+function chartRamp(css) {
+  const numbers = [...css.matchAll(/^\s*--color-chart-(\d+)\s*:/gim)].map((m) => +m[1]);
+  assert.ok(numbers.length > 0, "no --color-chart-* tokens declared");
+  return numbers.sort((a, b) => a - b).map((n) => ({ n, ...colourOf(css, `color-chart-${n}`) }));
+}
+
+/** Which ramp steps sit within `floor` of a named UI token. */
+function uiCollisions(css, ramp, floor) {
+  const ui = ["color-primary", "color-beige", "color-beige-muted", "color-muted-foreground"];
+  const hits = [];
+  for (const c of ramp) {
+    for (const token of ui) {
+      const d = deltaEOk(c, colourOf(css, token));
+      if (d < floor) hits.push(`chart-${c.n} vs --${token}: ΔE_ok ${d.toFixed(1)}`);
+    }
+  }
+  return hits;
+}
+
+/** Which ramp pairs sit closer together than `floor`. */
+function closePairs(ramp, floor) {
+  const hits = [];
+  for (let i = 0; i < ramp.length; i++) {
+    for (let j = i + 1; j < ramp.length; j++) {
+      const d = deltaEOk(ramp[i], ramp[j]);
+      if (d < floor) hits.push(`chart-${ramp[i].n} vs chart-${ramp[j].n}: ΔE_ok ${d.toFixed(1)}`);
+    }
+  }
+  return hits;
+}
+
+test("the chart ramp has enough steps to draw six series without synthesising more", () => {
+  const ramp = chartRamp(readFileSync(THEME, "utf8"));
+  assert.ok(
+    ramp.length >= 6,
+    `only ${ramp.length} chart steps — a six-line chart then has to build its own ` +
+      `ladder out of color-mix() at the call site, which is what happened`,
+  );
+});
+
+test("the chart ramp is ordered lightest first, with no step out of sequence", () => {
+  const ramp = chartRamp(readFileSync(THEME, "utf8"));
+  const outOfOrder = [];
+  for (let i = 1; i < ramp.length; i++) {
+    if (ramp[i].L >= ramp[i - 1].L) {
+      outOfOrder.push(
+        `chart-${ramp[i].n} (L ${ramp[i].L}) is not lighter than chart-${ramp[i - 1].n} (L ${ramp[i - 1].L})`,
+      );
+    }
+  }
+  assert.deepEqual(outOfOrder, [], "a ramp out of lightness order reads as noise");
+});
+
+test("no chart step is the colour of the UI it is drawn inside", () => {
+  const css = readFileSync(THEME, "utf8");
+  assert.deepEqual(
+    uiCollisions(css, chartRamp(css), MIN_FROM_UI),
+    [],
+    "a series wearing the accent or the axis-text colour reads as a highlight, or as " +
+      "another series — not as data",
+  );
+});
+
+test("every pair of chart steps is distinguishable", () => {
+  const ramp = chartRamp(readFileSync(THEME, "utf8"));
+  assert.deepEqual(
+    closePairs(ramp, MIN_PAIRWISE),
+    [],
+    "two series closer than this are told apart by nothing at all",
+  );
+});
+
+test("every chart step is legible on a card", () => {
+  const css = readFileSync(THEME, "utf8");
+  const card = colourOf(css, "color-card");
+  const dim = chartRamp(css)
+    .map((c) => [c.n, deltaEOk(c, card)])
+    .filter(([, d]) => d < MIN_FROM_CARD)
+    .map(([n, d]) => `chart-${n} is ΔE_ok ${d.toFixed(1)} from the card`);
+  assert.deepEqual(dim, [], "a 2px line this close to its background is a smudge, not a line");
+});
+
+test("the chart ramp stays in the house hue band — a ladder, not a second palette", () => {
+  // Chromatic separation is what lets six steps share one lightness band, but a
+  // ramp that buys it with new hues stops being part of this theme. The accent
+  // family is warm and narrow; a step outside it is a different design decision
+  // from the one this ramp was asked to make.
+  const ramp = chartRamp(readFileSync(THEME, "utf8"));
+  const offBand = ramp.filter((c) => c.H < 60 || c.H > 100).map((c) => `chart-${c.n} (hue ${c.H})`);
+  assert.deepEqual(offBand, [], "chart steps must stay in the warm accent band, hue 60-100");
+  const grey = ramp.filter((c) => c.C < 0.02).map((c) => `chart-${c.n} (C ${c.C})`);
+  assert.deepEqual(grey, [], "a near-grey step cannot be separated from its neighbours by hue");
+});
+
+test("positive control: the collision checks reject a ramp built to collide", () => {
+  // A guard that only ever passes is indistinguishable from no guard. Feed the
+  // two checks a synthetic ramp carrying the two faults the real one shipped —
+  // a step identical to the primary, and a step identical to its neighbour — and
+  // require both checks to report them. If either check silently passes here,
+  // the assertions above are measuring nothing.
+  const css = readFileSync(THEME, "utf8");
+  const primary = colourOf(css, "color-primary");
+  const planted = [
+    { n: 1, ...primary },                       // identical to the accent button
+    { n: 2, ...primary },                       // identical to its own neighbour
+    { n: 3, ...colourOf(css, "color-chart-1") }, // an honest step, to prove the rest still passes
+  ];
+  assert.ok(
+    uiCollisions(css, planted, MIN_FROM_UI).length > 0,
+    "the UI-collision check passed a ramp whose first step is the primary colour",
+  );
+  assert.ok(
+    closePairs(planted, MIN_PAIRWISE).length > 0,
+    "the pairwise check passed a ramp with two identical steps",
+  );
+  assert.equal(
+    deltaEOk(planted[0], planted[1]),
+    0,
+    "a colour must measure 0 from an identical colour, or every number above is meaningless",
+  );
+});
