@@ -96,7 +96,7 @@ primitive, and you've started a fifth palette.
 | accent | `--df-beige` `--df-beige-muted` `--df-on-beige` `--df-on-bad` |
 | lines | `--df-hairline` `--df-line-strong` |
 | status | `--df-good` `--df-bad` `--df-warn` `--df-info` (aliased as `--success` `--warning` `--info`) |
-| charts | `--df-chart-1` … `--df-chart-5` |
+| charts | `--df-chart-1` … `--df-chart-6` (aliased as `--color-chart-N`; six distinct steps, lightest first) |
 | geometry | `--radius` (+ `sm`/`md`/`lg`/`xl`) |
 
 ### Deliberate choices

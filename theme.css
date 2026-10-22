@@ -85,13 +85,35 @@
      that put good/bad/warn here. */
   --df-info: oklch(0.62 0.19 258);
 
-  /* Chart ramp — monochrome luminance steps, lightest first, built for a dark
-     background. Categorical hues would fight the single-accent identity. */
-  --df-chart-1: oklch(0.918 0.019 83);
-  --df-chart-2: oklch(0.787 0.031 81);
-  --df-chart-3: oklch(0.553 0.073 78);
-  --df-chart-4: oklch(0.673 0.018 79);
-  --df-chart-5: oklch(0.509 0.017 81);
+  /* Chart ramp — six luminance steps, lightest first, on a dark background.
+     Categorical hues would fight the single-accent identity, so separation
+     comes from lightness AND chroma within the warm accent band, never from new
+     hues.
+
+     The ramp this replaces was five steps that collided with the UI: its first
+     step was the primary colour and a middle step was the secondary text colour
+     byte for byte, so a chart's opening series wore the accent button's colour
+     and two of its series were one colour. It also ran out of room — five steps
+     for six lines, so callers built a second ladder out of color-mix() at the
+     call site, and the closest pair that ladder could reach was ΔE_ok 7.1.
+
+     Six is what the band supports. Measured: the usable lightness range above a
+     card this dark is about L .38-.86, and the semantic colours already sit
+     inside it (primary .918, beige-muted .787, muted-foreground .673), so the
+     steps must dodge those as well as each other. A seventh step is what makes
+     that arithmetic fail — it drops the closest pair to 8.1, under the floor of
+     10 this ramp is held to.
+
+     ΔE_ok is euclidean distance in OKLab ×100, measured through the full alias
+     chain, not by comparing these strings: --color-chart-N -> --chart-N ->
+     --df-chart-N. Closest pair here is 10.0, every step is ≥15.9 from the card,
+     and every step is ≥8.7 from the UI colours above. */
+  --df-chart-1: oklch(0.860 0.105 88);
+  --df-chart-2: oklch(0.764 0.115 74);
+  --df-chart-3: oklch(0.668 0.105 88);
+  --df-chart-4: oklch(0.572 0.070 82);
+  --df-chart-5: oklch(0.476 0.100 84);
+  --df-chart-6: oklch(0.380 0.040 76);
 
   /* Geometry */
   --radius: 0.5rem;
@@ -152,6 +174,7 @@
   --chart-3: var(--df-chart-3);
   --chart-4: var(--df-chart-4);
   --chart-5: var(--df-chart-5);
+  --chart-6: var(--df-chart-6);
 
   --sidebar: var(--df-rail);
   --sidebar-foreground: var(--df-rail-text);
@@ -224,6 +247,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
