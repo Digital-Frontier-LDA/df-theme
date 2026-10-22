@@ -381,6 +381,22 @@ test("the chart ramp has enough steps to draw six series without synthesising mo
   );
 });
 
+test("the chart steps are numbered 1..N with no gap", () => {
+  // Counting tokens is not the same as naming them. Rename --color-chart-6 to
+  // --color-chart-7 and every colour assertion above still passes — six steps,
+  // all distinct, all on-brand — while every caller asking for --color-chart-6
+  // silently gets nothing. Callers index by number, so the numbers are the
+  // contract, not an implementation detail.
+  const ramp = chartRamp(readFileSync(THEME, "utf8"));
+  const numbers = ramp.map((c) => c.n);
+  const expected = ramp.map((_, i) => i + 1);
+  assert.deepEqual(
+    numbers,
+    expected,
+    `chart steps must run 1..${ramp.length} with no gap; found ${numbers.join(", ")}`,
+  );
+});
+
 test("the chart ramp is ordered lightest first, with no step out of sequence", () => {
   const ramp = chartRamp(readFileSync(THEME, "utf8"));
   const outOfOrder = [];
